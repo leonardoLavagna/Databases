@@ -1,0 +1,68 @@
+// employee number and last name 
+db.sub_employees.find({},{"emp_no" : 1,"last_name":1});
+
+// employee number, last name and 10000 < salary < 40000 from a single table db.sub_salaries.find({salary:{$lt:40000,$gt:10000}});
+
+// employees with hire date = 2000
+db.sub_employees.find({},{"emp_no" : 1,"last_name":1,"hire_date " : ('2000')});
+
+// all employees with surname that begins with the letter L 
+db.sub_employees.find({last_name:/^L/})
+
+// max salary for each employee
+db.sub_salaries.aggregate([{$group: {_id: "$emp_no", max: { $max: "$salary" } } },]);
+
+// average salary for each employee where salary > 2000 
+db.sub_salaries.aggregate([{$match: { salary : { $gt: 2000} } },{$group : {_id : "$emp_no", salary_average : {$avg : "$salary"}}}])
+
+// Number of employees with the same surname and birth date of the oldest person with that surname
+db.employee.aggregate( [
+  {
+	$group: {
+	_id: "$last_name",
+	total: { $count: {} },
+	birthday: { $min: "$birth_date"}
+  } 
+},
+{
+	$sort: { _id: 1 }
+} ])
+
+// Last name, first name and hire date of employees hired between 1987 and 1990 db.employee.find(
+{ $and:
+[ { hire_date: { $gt: "1986-12-31" } },
+{ hire_date: { $lt: "1990-01-01" } } ]
+}, { last_name: 1, first_name: 1, hire_date: 1}).sort({ hire_date: 1 })
+
+// Number of employees for each title 
+db.titles.aggregate( [
+{
+	$group:
+  {
+	_id: "$title",
+	total: { $count: {}}
+  } 
+}
+])
+
+// Employees with salary between 40 thousand and 70 thousand from two tables db.employee.aggregate( [
+{
+	$lookup:
+  {
+	from: "salaries",
+	let: { emplo_empno: "$emp_no" }, pipeline: [
+	  { $match: { $expr:
+	    { $and: [
+	      { $eq: [ "$emp_no", "$$emplo_empno" ] }, 
+	      { $gt: [ "$salary", 40000 ] },
+	      { $lt: [ "$salary", 70000 ] }
+	      ] 
+            }
+          } 
+        },
+	{ $project: { _id: 0, emp_no: 0 } } 
+	],
+	as: "salary" 
+	}
+      }
+    ] ).limit(10)
